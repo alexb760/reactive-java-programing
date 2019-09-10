@@ -27,9 +27,55 @@ public class ReactiveFlowJavaRX
      return squares;
  }
 
- public static void main(String[] args)
+ private static List doParallelSquare()
  {
-     doSquares().forEach(num -> System.out.println(num + "\n"));
+     List squares = new ArrayList();
+     Flowable.range(1, 64)
+             .flatMap(x -> Flowable.just(x)
+             .subscribeOn(Schedulers.computation())
+             .map(y -> y * y))
+             .doOnError(ex -> ex.printStackTrace())
+             .doOnComplete(() -> System.out.println(":::Complete::"))
+             .blockingSubscribe(squares::add);
+     return squares;
+ }
+
+    /**
+     * For some heavy computations, you may want to run them in the background
+     * while rendering the result in a separate thread so as not to block the UI or rendering thread.
+     * For this case, you can use the subscribeOn method with one Scheduler and the observeOn method
+     * with a different Scheduler.
+     *
+     * @throws Exception
+     */
+ private static void runningHeavyComputation() throws Exception
+ {
+     Flowable<String> source = Flowable.fromCallable(
+             //Create a new Flowable from a Callable (functional interface (SAM) which simply returns a value).
+             () ->
+             {
+                 Thread.sleep(10000);
+                 return "Done";
+             });
+
+     source.doOnComplete(() -> System.out.println("Complete computation"));
+
+    //Run the Flowable using the “IO” Scheduler. This Scheduler uses a cached
+    // thread pool which is good for I/O (e.g., reading and writing to disk or network transfers).
+     Flowable<String> backGround = source.subscribeOn(Schedulers.io());
+
+    //Observe the results of the Flowable using a single-threaded Scheduler.
+     Flowable<String> foreground = backGround.subscribeOn(Schedulers.single());
+
+     // Finally, subscribe to the resulting foreground Flowable to initiate the flow and print the results
+     // to standard out. The result of calling runComputation() will be “Done” printed after one second.
+     foreground.subscribe(System.out::println, Throwable::printStackTrace);
+ }
+
+ public static void main(String[] args) throws Exception {
+     //doSquares().forEach(num -> System.out.println(num + "\n"));
+     //doParallelSquare().forEach(System.out::println);
+     runningHeavyComputation();
  }
 
 }
