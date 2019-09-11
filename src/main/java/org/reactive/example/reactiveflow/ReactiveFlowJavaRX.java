@@ -3,6 +3,9 @@ package org.reactive.example.reactiveflow;
 import io.reactivex.Flowable;
 import io.reactivex.schedulers.Schedulers;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,7 +22,7 @@ public class ReactiveFlowJavaRX
      List squares = new ArrayList();
      Flowable.range(1, 64)
              //Call the method observeOn to determine which Scheduler to use. This determines on which Thread
-             // or Threads the flow will run. The Scheduler returned from “computation()” takes advantage of all available
+             // or Threads the flow will run. The Scheduler returned from computation() takes advantage of all available
              // processors when possible.
              .observeOn(Schedulers.computation())
              .map(x -> x * x)
@@ -60,7 +63,7 @@ public class ReactiveFlowJavaRX
 
      source.doOnComplete(() -> System.out.println("Complete computation"));
 
-    //Run the Flowable using the “IO” Scheduler. This Scheduler uses a cached
+    //Run the Flowable using the IO Scheduler. This Scheduler uses a cached
     // thread pool which is good for I/O (e.g., reading and writing to disk or network transfers).
      Flowable<String> backGround = source.subscribeOn(Schedulers.io());
 
@@ -72,10 +75,31 @@ public class ReactiveFlowJavaRX
      foreground.subscribe(System.out::println, Throwable::printStackTrace);
  }
 
+ //Publisher
+ //For nontrivial problems, you might need to create your own Publisher. You would only do this
+ // if you wanted fine control over the request/response nature of Reactive Streams,
+ // and it is not necessary to use RxJava.
+    private static void writeFile(File file)
+    {
+        try(PrintWriter pw = new PrintWriter(file))
+        {
+            Flowable.range(1, 10000)
+                    .observeOn(Schedulers.newThread())
+                    .blockingSubscribe(pw::println);
+
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+
+    }
+
  public static void main(String[] args) throws Exception {
      //doSquares().forEach(num -> System.out.println(num + "\n"));
      //doParallelSquare().forEach(System.out::println);
-     runningHeavyComputation();
+     //runningHeavyComputation();
+     File file = new File("/home/pupppet/scratch/data-samples/test.txt");
+     writeFile(file);
  }
 
 }
